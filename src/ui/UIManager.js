@@ -41,17 +41,13 @@ class UIManager {
     }
 
     _bindEvents() {
-        // File upload
         this.elements.uploadPrompt.addEventListener('click', () => this.elements.artworkInput.click());
         this.elements.uploadPrompt.addEventListener('dragover', (e) => { e.preventDefault(); this.elements.uploadPrompt.classList.add('drag-over'); });
         this.elements.uploadPrompt.addEventListener('dragleave', () => this.elements.uploadPrompt.classList.remove('drag-over'));
         this.elements.uploadPrompt.addEventListener('drop', (e) => { e.preventDefault(); this.elements.uploadPrompt.classList.remove('drag-over'); if (e.dataTransfer.files[0]) this._handleFileUpload(e.dataTransfer.files[0]); });
         this.elements.artworkInput.addEventListener('change', (e) => { if (e.target.files[0]) this._handleFileUpload(e.target.files[0]); });
-
-        // New project
         this.elements.newProjectBtn.addEventListener('click', () => this._resetProject());
 
-        // Sliders
         this._bindSlider(this.elements.scaleSlider, 'artwork.scale', v => `${v}%`);
         this._bindSlider(this.elements.rotationSlider, 'artwork.rotation', v => `${v}°`);
         this._bindSlider(this.elements.frameWidthSlider, 'frame.width', v => `${(v/10).toFixed(1)}cm`);
@@ -59,10 +55,8 @@ class UIManager {
         this._bindSlider(this.elements.lightIntensitySlider, 'lighting.intensity', v => `${v}%`);
         this._bindSlider(this.elements.lightWarmthSlider, 'lighting.warmth', v => `${v}K`);
 
-        // Frame color
         this.elements.frameColorInput.addEventListener('input', (e) => appState.set('frame.color', e.target.value));
 
-        // Export
         this.elements.exportBtn.addEventListener('click', () => this.elements.exportModal.showModal());
         document.getElementById('close-export').addEventListener('click', () => this.elements.exportModal.close());
         document.getElementById('cancel-export').addEventListener('click', () => this.elements.exportModal.close());
@@ -91,11 +85,6 @@ class UIManager {
         }));
         this.unsubscribers.push(appState.subscribe('template.id', (id) => {
             document.querySelectorAll('.template-card').forEach(c => c.classList.toggle('active', c.dataset.id === id));
-            document.querySelectorAll('.category-btn').forEach(b => {
-                const cat = b.dataset.category;
-                const template = TemplateLibrary.getById(id);
-                if (template) b.classList.toggle('active', template.category === cat);
-            });
         }));
         this.unsubscribers.push(appState.subscribe('artwork.processedImage', (img) => {
             if (img) this.elements.uploadPrompt.classList.add('hidden');
@@ -142,22 +131,13 @@ class UIManager {
             card.className = 'template-card';
             card.dataset.id = t.id;
             const bg = t.scene.background || t.scene.backgroundGradient?.from || '#222';
-            card.innerHTML = `
-                <div class="template-preview" style="background:${bg};height:100%;display:flex;align-items:center;justify-content:center;">
-                    <span style="color:rgba(255,255,255,0.3);font-size:12px;">${t.name}</span>
-                </div>
-            `;
+            card.innerHTML = `<div class="template-preview" style="background:${bg};height:100%"></div>`;
             card.addEventListener('click', () => {
                 appState.set('template.id', t.id);
                 appState.set('template.category', t.category);
             });
             this.elements.templateGrid.appendChild(card);
         });
-        const currentId = appState.get('template.id');
-        if (currentId) {
-            const currentCard = this.elements.templateGrid.querySelector(`[data-id="${currentId}"]`);
-            if (currentCard) currentCard.classList.add('active');
-        }
     }
 
     _initFrameGrid() {
@@ -227,18 +207,12 @@ class UIManager {
             canvas.width = img.width;
             canvas.height = img.height;
             canvas.getContext('2d').drawImage(img, 0, 0);
-            appState.batch({
-                'artwork.sourceImage': file,
-                'artwork.processedImage': canvas,
-                'project.id': crypto.randomUUID(),
-                'project.createdAt': Date.now()
-            });
-            if (result.suggestions?.length > 0) {
-                this._showAISuggestions(result.suggestions);
-            }
+            appState.set('artwork.processedImage', canvas);
+            appState.set('project.id', crypto.randomUUID());
+            this.elements.uploadPrompt.classList.add('hidden');
+            if (result.suggestions?.length > 0) this._showAISuggestions(result.suggestions);
         } catch (err) {
             console.error('Upload failed:', err);
-            alert('Failed to process image');
         } finally {
             appState.set('ai.processing', false);
         }
@@ -271,7 +245,6 @@ class UIManager {
                 const template = TemplateLibrary.getById(id);
                 if (template) {
                     appState.set('template.id', id);
-                    appState.set('template.category', template.category);
                     const catBtn = document.querySelector(`.category-btn[data-category="${template.category}"]`);
                     if (catBtn) catBtn.click();
                 }
@@ -282,34 +255,34 @@ class UIManager {
     async _handleExport() {
         const artwork = appState.get('artwork.processedImage');
         const template = TemplateLibrary.getById(appState.get('template.id'));
-        if (!artwork || !template) {
-            alert('Please upload artwork and select a template first');
-            return;
-        }
+        if (!artwork || !template) { alert('Please upload artwork and select a template first'); return; }
+
         const presetBtn = document.querySelector('.preset-btn.active');
         const presetId = presetBtn?.dataset.preset || 'marketplace';
         appState.set('ai.processing', true);
-        appState.set('ai.progress', 0.5);
+
         try {
-            // Generate export canvas
-            const exportCanvas = await templateRenderer.render(template, document.createElement('canvas'), artwork, {
+            const targetWidth = presetId === 'social' ? 1080 : presetId === 'print' ? 4800 : 3000;
+            const exportCanvas = await templateRenderer.renderForExport(template, artwork, {
                 scale: appState.get('artwork.scale') / 100,
                 rotation: appState.get('artwork.rotation'),
                 frame: appState.get('frame'),
                 lighting: appState.get('lighting')
-            });
-            // Download
+            }, targetWidth);
+
             const blob = await new Promise(r => exportCanvas.toBlob(r, 'image/png'));
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `galleria-export-${Date.now()}.png`;
+            a.download = `galleria-${presetId}-${Date.now()}.png`;
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
             URL.revokeObjectURL(url);
             this.elements.exportModal.close();
         } catch (err) {
             console.error('Export failed:', err);
-            alert('Export failed');
+            alert('Export failed: ' + err.message);
         } finally {
             appState.set('ai.processing', false);
         }
