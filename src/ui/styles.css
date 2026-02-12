@@ -269,9 +269,11 @@ html, body {
     border: 2px dashed var(--border-color);
     border-radius: 16px;
     cursor: pointer;
+    transition: var(--transition-fast);
 }
-.upload-prompt:hover { border-color: var(--accent-primary); }
-.upload-prompt.hidden { display: none; }
+.upload-prompt:hover { border-color: var(--accent-primary); background: rgba(108, 92, 231, 0.05); }
+.upload-prompt.drag-over { border-color: var(--accent-primary); background: rgba(108, 92, 231, 0.1); }
+.upload-prompt.hidden { display: none !important; }
 
 .dimension-inputs { display: flex; align-items: center; gap: 8px; }
 .dimension-inputs input {
@@ -334,6 +336,7 @@ html, body {
     cursor: pointer;
 }
 .preset-btn:hover { background: var(--bg-elevated); }
+.preset-btn.active { background: var(--accent-primary); border-color: var(--accent-primary); color: white; }
 
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; z-index: 1000; }
 .modal[open] { display: flex; align-items: center; justify-content: center; }
