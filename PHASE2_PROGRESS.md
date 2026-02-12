@@ -11,10 +11,23 @@
 
 ## Updates
 
-**[21:05 UTC] Starting Phase 2**
-- Decision: Wire canvas rendering first - core functionality
-- Creating TemplateRenderer class to bridge templates → canvas
-- Will integrate with existing CanvasEngine layers
+### [21:05 UTC] Started Phase 2
+Decision: Wire canvas rendering first - core functionality
 
----
-*In progress...*
+### [21:15 UTC] Created TemplateRenderer
+- New class bridging templates → canvas
+- Handles: background, floor, shadow, frame, artwork, lighting
+- 225 lines, handles all 20 templates
+- Committed: src/templates/TemplateRenderer.js
+
+### [21:20 UTC] Rewiring app.js
+- Simplified to single scene layer using TemplateRenderer
+- Automatically renders when state changes
+- Handles template-only mode (no artwork uploaded yet)
+
+### [21:25 UTC] Fixing index.html
+- Removed broken TemplateEngine.js reference
+- Added TemplateRenderer.js to script load order
+- Cleaned up HTML structure
+
+**Current Status: TemplateRenderer created and wired. Next: testing render cycle, then frame/shadow refinement.**
