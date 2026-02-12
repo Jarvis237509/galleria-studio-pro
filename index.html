@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Galleria Studio Pro</title>
+    <link rel="stylesheet" href="src/ui/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <header class="app-header">
+            <div class="header-left">
+                <button id="menu-btn" class="icon-btn">☰</button>
+                <h1>Galleria Studio <span class="pro-badge">PRO</span></h1>
+            </div>
+            <div class="header-right">
+                <button id="new-project-btn" class="primary-btn">
+                    <span>+</span> New Project
+                </button>
+            </div>
+        </header>
+
+        <main class="workspace">
+            <aside class="left-panel" id="left-panel">
+                <div class="panel-tabs">
+                    <button class="tab-btn active" data-tab="templates">Templates</button>
+                    <button class="tab-btn" data-tab="frames">Frames</button>
+                    <button class="tab-btn" data-tab="lighting">Lighting</button>
+                    <button class="tab-btn" data-tab="layout">Layout</button>
+                </div>
+
+                <div class="tab-content active" id="tab-templates">
+                    <div class="section">
+                        <h3>AI Recommendation</h3>
+                        <div class="ai-suggestion-card" id="ai-suggestion">
+                            <div class="ai-icon">✨</div>
+                            <p>Upload artwork to get AI scene recommendations</p>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <h3>Categories</h3>
+                        <div class="category-list" id="template-categories"></div>
+                    </div>
+                    <div class="section">
+                        <h3>Templates</h3>
+                        <div class="template-grid" id="template-grid"></div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-frames">
+                    <div class="section">
+                        <h3>Frame Style</h3>
+                        <div class="frame-grid" id="frame-grid"></div>
+                    </div>
+                    <div class="section">
+                        <h3>Frame Properties</h3>
+                        <div class="control-group">
+                            <label>Width <span class="value">2.0 cm</span></label>
+                            <input type="range" id="frame-width" min="0" max="100" value="20">
+                        </div>
+                        <div class="control-group">
+                            <label>Depth <span class="value">1.5 cm</span></label>
+                            <input type="range" id="frame-depth" min="0" max="50" value="15">
+                        </div>
+                        <div class="control-group">
+                            <label>Colour</label>
+                            <input type="color" id="frame-color" value="#ffffff">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-lighting">
+                    <div class="section">
+                        <h3>Light Source</h3>
+                        <div class="light-position-control" id="light-position">
+                            <div class="light-indicator" style="left: 50%; top: 20%;"></div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <h3>Lighting Properties</h3>
+                        <div class="control-group">
+                            <label>Intensity</label>
+                            <input type="range" id="light-intensity" min="0" max="200" value="100">
+                        </div>
+                        <div class="control-group">
+                            <label>Warmth</label>
+                            <input type="range" id="light-warmth" min="2000" max="8000" value="4000">
+                            <span class="value">4000K</span>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <h3>Atmosphere</h3>
+                        <div class="mood-presets" id="mood-presets"></div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-layout">
+                    <div class="section">
+                        <h3>Wall Layout</h3>
+                        <button class="secondary-btn full-width">+ Add Artwork</button>
+                    </div>
+                </div>
+            </aside>
+
+            <section class="canvas-section">
+                <div class="canvas-toolbar">
+                    <div class="tool-group">
+                        <button class="tool-btn active" data-tool="move">↖</button>
+                        <button class="tool-btn" data-tool="scale">⤢</button>
+                        <button class="tool-btn" data-tool="rotate">↻</button>
+                    </div>
+                    <div class="tool-group">
+                        <button class="tool-btn" id="zoom-out">-</button>
+                        <span class="zoom-level" id="zoom-level">100%</span>
+                        <button class="tool-btn" id="zoom-in">+</button>
+                    </div>
+                </div>
+                <div class="canvas-container" id="canvas-container">
+                    <canvas id="main-canvas"></canvas>
+                    <div class="canvas-overlay" id="canvas-overlay">
+                        <div class="upload-prompt" id="upload-prompt">
+                            <div class="upload-icon">🖼️</div>
+                            <h3>Drop artwork here</h3>
+                            <p>or click to browse</p>
+                            <input type="file" id="artwork-input" accept="image/*" hidden>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="right-panel" id="right-panel">
+                <div class="section">
+                    <h3>Artwork Properties</h3>
+                    <div class="control-group">
+                        <label>Dimensions (cm)</label>
+                        <div class="dimension-inputs">
+                            <input type="number" id="artwork-width" value="60" min="1">
+                            <span>×</span>
+                            <input type="number" id="artwork-height" value="80" min="1">
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label>Scale <span id="scale-value">100%</span></label>
+                        <input type="range" id="artwork-scale" min="10" max="500" value="100">
+                    </div>
+                    <div class="control-group">
+                        <label>Rotation <span id="rotation-value">0°</span></label>
+                        <input type="range" id="artwork-rotation" min="-180" max="180" value="0">
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>AI Enhancement</h3>
+                    <div class="ai-controls">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="ai-bg-remove" checked>
+                            <span>Background Removal</span>
+                        </label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="ai-perspective" checked>
+                            <span>Perspective Correction</span>
+                        </label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="ai-color-enhance">
+                            <span>Colour Enhancement</span>
+                        </label>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <footer class="export-bar">
+            <div class="export-presets">
+                <button class="preset-btn" data-preset="marketplace">🏪 Marketplace</button>
+                <button class="preset-btn" data-preset="social">📱 Social</button>
+                <button class="preset-btn" data-preset="portfolio">📁 Portfolio</button>
+                <button class="preset-btn" data-preset="print">🖨️ Print</button>
+            </div>
+            <button class="export-btn primary-btn large" id="export-btn">Export Pack ↓</button>
+        </footer>
+
+        <dialog class="modal" id="export-modal">
+            <div class="modal-content">
+                <header class="modal-header">
+                    <h2>Export Pack</h2>
+                    <button class="close-btn" id="close-export">×</button>
+                </header>
+                <div class="export-options">
+                    <h3>Coming in Phase 2</h3>
+                    <p>Multi-resolution export packs will be available soon.</p>
+                </div>
+                <footer class="modal-footer">
+                    <button class="secondary-btn" id="cancel-export">Cancel</button>
+                    <button class="primary-btn" id="confirm-export">Export</button>
+                </footer>
+            </div>
+        </dialog>
+
+        <div class="processing-overlay" id="processing-overlay">
+            <div class="processing-content">
+                <div class="spinner"></div>
+                <h3 id="processing-text">Processing artwork...</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="src/core/State.js"></script>
+    <script src="src/core/CanvasEngine.js"></script>
+    <script src="src/templates/TemplateLibrary.js"></script>
+    <script src="src/frames/FrameSystem.js"></script>
+    <script src="src/lighting/LightingEngine.js"></script>
+    <script src="src/ai/AIProcessor.js"></script>
+    <script src="src/export/ExportEngine.js"></script>
+    <script src="src/ui/UIManager.js"></script>
+    <script src="src/app.js"></script>
+</body>
+</html>
