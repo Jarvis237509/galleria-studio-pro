@@ -20,6 +20,12 @@ class GalleriaApp {
         // Initialize UI
         this.uiManager.init();
 
+        // Initialize keyboard shortcuts
+        keyboardShortcuts.init();
+
+        // Initialize project manager
+        projectManager.init();
+
         // Bind state changes to render
         this._bindStateToRender();
 
