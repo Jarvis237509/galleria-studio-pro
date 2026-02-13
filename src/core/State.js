@@ -84,6 +84,36 @@ class State {
         this._notify('state.reset', this.state);
         return this;
     }
+
+    undo() {
+        if (this.historyIndex > 0) {
+            this.historyIndex--;
+            this.state = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
+            this._notify('state.undo', this.state);
+            this._notify('*', this.state, 'state.undo');
+            return true;
+        }
+        return false;
+    }
+
+    redo() {
+        if (this.historyIndex < this.history.length - 1) {
+            this.historyIndex++;
+            this.state = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
+            this._notify('state.redo', this.state);
+            this._notify('*', this.state, 'state.redo');
+            return true;
+        }
+        return false;
+    }
+
+    canUndo() {
+        return this.historyIndex > 0;
+    }
+
+    canRedo() {
+        return this.historyIndex < this.history.length - 1;
+    }
 }
 
 const appState = new State();
