@@ -14,7 +14,14 @@
                 <button id="menu-btn" class="icon-btn">☰</button>
                 <h1>Galleria Studio <span class="pro-badge">PRO</span></h1>
             </div>
+            <div class="header-center">
+                <button id="undo-btn" class="icon-btn" title="Undo (Ctrl+Z)" disabled>↩</button>
+                <button id="redo-btn" class="icon-btn" title="Redo (Ctrl+Y)" disabled>↪</button>
+            </div>
             <div class="header-right">
+                <button id="my-projects-btn" class="secondary-btn" title="My Projects">
+                    📁 My Projects
+                </button>
                 <button id="new-project-btn" class="primary-btn">
                     <span>+</span> New Project
                 </button>
@@ -115,7 +122,7 @@
                             <div class="upload-icon">🖼️</div>
                             <h3>Drop artwork here</h3>
                             <p>or click to browse</p>
-                            <input type="file" id="artwork-input" accept="image/*" hidden>
+                            <input type="file" id="artwork-input" accept="image/*" multiple hidden>
                         </div>
                     </div>
                 </div>
@@ -163,6 +170,15 @@
         </main>
 
         <footer class="export-bar">
+            <!-- Batch Gallery -->
+            <div class="batch-gallery" id="batch-gallery">
+                <div class="batch-gallery-header">
+                    <span>📚 Artworks (<span id="artwork-count">0</span>)</span>
+                    <button id="clear-all-btn" class="batch-btn" title="Clear all">✕</button>
+                </div>
+                <div class="batch-gallery-list" id="batch-gallery-list"></div>
+            </div>
+            
             <div class="export-presets">
                 <button class="preset-btn" data-preset="marketplace">🏪 Marketplace</button>
                 <button class="preset-btn" data-preset="social">📱 Social</button>
@@ -179,12 +195,56 @@
                     <button class="close-btn" id="close-export">×</button>
                 </header>
                 <div class="export-options">
-                    <h3>Coming in Phase 2</h3>
-                    <p>Multi-resolution export packs will be available soon.</p>
+                    <div class="export-section">
+                        <h3>Export Preset</h3>
+                        <p id="export-preset-desc">Full resolution images optimized for online marketplaces</p>
+                    </div>
+                    <div class="export-section">
+                        <h3>Included Sizes</h3>
+                        <ul id="export-sizes-list" class="export-sizes">
+                            <li>Hero (3000×2400px)</li>
+                            <li>Square (1200×1200px)</li>
+                            <li>Thumb (800×600px)</li>
+                        </ul>
+                    </div>
+                    <div class="export-section">
+                        <h3>Options</h3>
+                        <label class="export-option">
+                            <input type="checkbox" id="export-watermark">
+                            <span>Add watermark</span>
+                        </label>
+                        <div id="watermark-text-group" class="watermark-group" style="display:none;margin-top:8px;">
+                            <input type="text" id="export-watermark-text" placeholder="Your watermark text" style="width:100%;padding:8px;border-radius:4px;border:1px solid #444;background:#1a1a1a;color:#fff;">
+                        </div>
+                    </div>
                 </div>
                 <footer class="modal-footer">
                     <button class="secondary-btn" id="cancel-export">Cancel</button>
-                    <button class="primary-btn" id="confirm-export">Export</button>
+                    <button class="primary-btn" id="confirm-export">Export Pack ↓</button>
+                </footer>
+            </div>
+        </dialog>
+
+        <!-- Projects Modal -->
+        <dialog class="modal" id="projects-modal">
+            <div class="modal-content" style="max-width: 600px;">
+                <header class="modal-header">
+                    <h2>My Projects</h2>
+                    <button class="close-btn" id="close-projects">×</button>
+                </header>
+                <div class="projects-container" id="projects-container">
+                    <!-- Projects will be rendered here -->
+                </div>
+                <footer class="modal-footer">
+                    <div style="display:flex;gap:12px;align-items:center;flex:1;">
+                        <input type="text" id="save-project-name" placeholder="Project name..." style="flex:1;padding:10px;border:1px solid #444;border-radius:6px;background:#1a1a24;color:#fff;">
+                        <button class="secondary-btn" id="export-json-btn">Export JSON</button>
+                        <label class="secondary-btn" style="cursor:pointer;">
+                            Import JSON
+                            <input type="file" id="import-json-input" accept=".json" hidden>
+                        </label>
+                    </div>
+                    <button class="primary-btn" id="save-new-project-btn">💾 Save Current</button>
                 </footer>
             </div>
         </dialog>
@@ -201,7 +261,11 @@
     </div>
 
     <script src="src/core/State.js"></script>
+    <script src="src/core/State.js"></script>
     <script src="src/core/CanvasEngine.js"></script>
+    <script src="src/core/KeyboardShortcuts.js"></script>
+    <script src="src/core/ProjectManager.js"></script>
+    <script src="src/core/BatchProcessor.js"></script>
     <script src="src/templates/TemplateLibrary.js"></script>
     <script src="src/templates/TemplateRenderer.js"></script>
     <script src="src/frames/FrameSystem.js"></script>
