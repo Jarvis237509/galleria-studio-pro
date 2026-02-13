@@ -49,11 +49,29 @@ Galleria Studio Pro creates outputs that look like luxury gallery photography, n
 - AI processing pipeline stub
 - Export modal structure
 
-## Phase 2 Next (AI Integration)
-- Background removal API
-- Real-time canvas rendering
-- Export pack generation
-- Shadow refinement
+## Phase 2 ✅ COMPLETE (Rendering)
+- Real-time canvas rendering with TemplateRenderer
+- Export pack generation with 4 presets
+- Multi-size exports (marketplace, social, portfolio, print)
+- Watermark support
+- Shadow rendering with FrameSystem
+
+## Phase 3 ✅ COMPLETE (AI Integration)
+- Background removal (client-side edge detection)
+- Perspective correction (auto brightness/contrast)
+- Color enhancement (saturation/vibrance)
+- AI template suggestions based on artwork analysis
+
+## Phase 4 ✅ COMPLETE (Professional)
+- Undo/Redo with visual feedback
+- 20+ keyboard shortcuts with help modal (Press ?)
+- Project persistence (export/import JSON, auto-save)
+- Batch processing (upload multiple artworks)
+- Gallery view thumbnail switching
+
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for full project scope and tracking.
 
 ## Usage
 1. Open `index.html` in browser
