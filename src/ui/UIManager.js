@@ -22,6 +22,11 @@ class UIManager {
             newProjectBtn: document.getElementById('new-project-btn'),
             exportBtn: document.getElementById('export-btn'),
             exportModal: document.getElementById('export-modal'),
+            projectsModal: document.getElementById('projects-modal'),
+            projectsContainer: document.getElementById('projects-container'),
+            saveProjectName: document.getElementById('save-project-name'),
+            undoBtn: document.getElementById('undo-btn'),
+            redoBtn: document.getElementById('redo-btn'),
             templateGrid: document.getElementById('template-grid'),
             templateCategories: document.getElementById('template-categories'),
             frameGrid: document.getElementById('frame-grid'),
@@ -44,9 +49,34 @@ class UIManager {
         this.elements.uploadPrompt.addEventListener('click', () => this.elements.artworkInput.click());
         this.elements.uploadPrompt.addEventListener('dragover', (e) => { e.preventDefault(); this.elements.uploadPrompt.classList.add('drag-over'); });
         this.elements.uploadPrompt.addEventListener('dragleave', () => this.elements.uploadPrompt.classList.remove('drag-over'));
-        this.elements.uploadPrompt.addEventListener('drop', (e) => { e.preventDefault(); this.elements.uploadPrompt.classList.remove('drag-over'); if (e.dataTransfer.files[0]) this._handleFileUpload(e.dataTransfer.files[0]); });
-        this.elements.artworkInput.addEventListener('change', (e) => { if (e.target.files[0]) this._handleFileUpload(e.target.files[0]); });
+        this.elements.uploadPrompt.addEventListener('drop', (e) => { e.preventDefault(); this.elements.uploadPrompt.classList.remove('drag-over'); if (e.dataTransfer.files[0]) this._handleFileUpload(Array.from(e.dataTransfer.files)); });
+        this.elements.artworkInput.addEventListener('change', (e) => { 
+            if (e.target.files && e.target.files.length > 0) {
+                this._handleFileUpload(Array.from(e.target.files));
+            }
+        });
         this.elements.newProjectBtn.addEventListener('click', () => this._resetProject());
+        
+        document.getElementById('clear-all-btn')?.addEventListener('click', () => {
+            if (confirm('Clear all artworks?')) {
+                batchProcessor.clear();
+                this._resetProject();
+            }
+        });
+
+        // Undo/Redo
+        this.elements.undoBtn.addEventListener('click', () => {
+            if (appState.undo()) {
+                this._showNotification('↩ Undone', 1000);
+                this._updateUIFromState();
+            }
+        });
+        this.elements.redoBtn.addEventListener('click', () => {
+            if (appState.redo()) {
+                this._showNotification('↪ Redone', 1000);
+                this._updateUIFromState();
+            }
+        });
 
         this._bindSlider(this.elements.scaleSlider, 'artwork.scale', v => `${v}%`);
         this._bindSlider(this.elements.rotationSlider, 'artwork.rotation', v => `${v}°`);
@@ -61,6 +91,96 @@ class UIManager {
         document.getElementById('close-export').addEventListener('click', () => this.elements.exportModal.close());
         document.getElementById('cancel-export').addEventListener('click', () => this.elements.exportModal.close());
         document.getElementById('confirm-export').addEventListener('click', () => this._handleExport());
+        document.getElementById('export-watermark').addEventListener('change', (e) => {
+            document.getElementById('watermark-text-group').style.display = e.target.checked ? 'block' : 'none';
+        });
+        
+        // Projects Modal
+        const projectsBtn = document.getElementById('my-projects-btn');
+        if (projectsBtn) {
+            projectsBtn.addEventListener('click', () => {
+                this._renderProjectsList();
+                this.elements.projectsModal.showModal();
+            });
+        }
+        document.getElementById('close-projects')?.addEventListener('click', () => this.elements.projectsModal.close());
+        document.getElementById('save-new-project-btn')?.addEventListener('click', () => {
+            const name = this.elements.saveProjectName.value || `Project ${Date.now()}`;
+            projectManager.saveProject(name);
+            this.elements.saveProjectName.value = '';
+            this._renderProjectsList();
+            this._showNotification('💾 Project saved!');
+        });
+        document.getElementById('export-json-btn')?.addEventListener('click', () => {
+            projectManager.exportProject();
+            this._showNotification('📤 Project exported!');
+        });
+        document.getElementById('import-json-input')?.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                projectManager.importProject(e.target.files[0])
+                    .then(() => {
+                        this._updateUIFromState();
+                        this.elements.projectsModal.close();
+                        this._showNotification('📥 Project imported!');
+                    })
+                    .catch(err => alert('Failed to import: ' + err.message));
+            }
+        });
+    }
+
+    _renderProjectsList() {
+        const container = this.elements.projectsContainer;
+        const projects = projectManager.listProjects();
+        
+        if (projects.length === 0) {
+            container.innerHTML = `
+                <div style="text-align:center;padding:40px;color:var(--text-tertiary);">
+                    <p>No saved projects yet</p>
+                    <p style="font-size:13px;margin-top:8px;">Upload artwork and save your first project</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:20px;">
+                ${projects.map(p => `
+                    <div class="project-card" data-id="${p.id}" style="background:var(--bg-tertiary);border-radius:12px;overflow:hidden;cursor:pointer;position:relative;">
+                        <div style="aspect-ratio:4/3;background:#1a1a24;display:flex;align-items:center;justify-content:center;">
+                            ${p.thumbnail ? `<img src="${p.thumbnail}" style="width:100%;height:100%;object-fit:cover;">` : '<span>🎨</span>'}
+                        </div>
+                        <div style="padding:12px;">
+                            <p style="font-weight:600;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</p>
+                            <p style="font-size:12px;color:var(--text-tertiary);">${new Date(p.updatedAt).toLocaleDateString()}</p>
+                        </div>
+                        <button class="project-delete" data-id="${p.id}" style="position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,0.5);border:none;color:#fff;cursor:pointer;display:none;align-items:center;justify-content:center;">×</button>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        container.querySelectorAll('.project-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (e.target.classList.contains('project-delete')) {
+                    e.stopPropagation();
+                    if (confirm('Delete this project?')) {
+                        projectManager.deleteProject(card.dataset.id);
+                        this._renderProjectsList();
+                    }
+                } else {
+                    projectManager.loadProject(card.dataset.id);
+                    this.elements.projectsModal.close();
+                    this._updateUIFromState();
+                    this._showNotification('📂 Project loaded!');
+                }
+            });
+            card.addEventListener('mouseenter', () => {
+                card.querySelector('.project-delete').style.display = 'flex';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.querySelector('.project-delete').style.display = 'none';
+            });
+        });
     }
 
     _bindSlider(slider, statePath, formatter) {
@@ -69,6 +189,8 @@ class UIManager {
             const value = parseInt(e.target.value);
             appState.set(statePath, value);
             if (displayEl) displayEl.textContent = formatter(value);
+            if (statePath === 'artwork.scale') batchProcessor.updateActive({ scale: value });
+            if (statePath === 'artwork.rotation') batchProcessor.updateActive({ rotation: value });
         });
         this.unsubscribers.push(appState.subscribe(statePath, (value) => {
             slider.value = value;
@@ -90,6 +212,31 @@ class UIManager {
             if (img) this.elements.uploadPrompt.classList.add('hidden');
             else this.elements.uploadPrompt.classList.remove('hidden');
         }));
+        this._updateHistoryButtons();
+    }
+    
+    _updateHistoryButtons() {
+        if (this.elements.undoBtn) this.elements.undoBtn.disabled = !appState.canUndo();
+        if (this.elements.redoBtn) this.elements.redoBtn.disabled = !appState.canRedo();
+    }
+    
+    _updateUIFromState() {
+        this.elements.scaleSlider.value = appState.get('artwork.scale');
+        this.elements.rotationSlider.value = appState.get('artwork.rotation');
+        this.elements.frameWidthSlider.value = appState.get('frame.width');
+        this.elements.frameDepthSlider.value = appState.get('frame.depth');
+        this.elements.frameColorInput.value = appState.get('frame.color');
+        this.elements.lightIntensitySlider.value = appState.get('lighting.intensity');
+        this.elements.lightWarmthSlider.value = appState.get('lighting.warmth');
+        this._updateSliderDisplays();
+        this._updateHistoryButtons();
+    }
+    
+    _updateSliderDisplays() {
+        const scaleDisplay = this.elements.scaleSlider.parentElement?.querySelector('.value');
+        if (scaleDisplay) scaleDisplay.textContent = `${appState.get('artwork.scale')}%`;
+        const rotationDisplay = this.elements.rotationSlider.parentElement?.querySelector('.value');
+        if (rotationDisplay) rotationDisplay.textContent = `${appState.get('artwork.rotation')}°`;
     }
 
     _initTabs() {
@@ -130,8 +277,7 @@ class UIManager {
             const card = document.createElement('div');
             card.className = 'template-card';
             card.dataset.id = t.id;
-            const bg = t.scene.background || t.scene.backgroundGradient?.from || '#222';
-            card.innerHTML = `<div class="template-preview" style="background:${bg};height:100%"></div>`;
+            card.innerHTML = `<div class="template-preview" style="background:${t.scene.background || t.scene.backgroundGradient?.from || '#222'};height:100%"></div>`;
             card.addEventListener('click', () => {
                 appState.set('template.id', t.id);
                 appState.set('template.category', t.category);
@@ -148,7 +294,6 @@ class UIManager {
             btn.className = 'frame-btn';
             btn.dataset.style = s.id;
             btn.style.background = s.defaultColor || '#ccc';
-            btn.title = s.name;
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.frame-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
@@ -173,16 +318,9 @@ class UIManager {
                 document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 appState.set('lighting.mood', m);
-                const preset = lightingEngine.getMoodPreset(m);
-                appState.set('lighting.warmth', preset.warmth);
-                appState.set('lighting.ambient', Math.round(preset.ambient * 100));
-                this.elements.lightWarmthSlider.value = preset.warmth;
             });
             this.elements.moodPresets.appendChild(btn);
         });
-        const currentMood = appState.get('lighting.mood') || 'gallery';
-        const currentBtn = this.elements.moodPresets.querySelector(`[data-mood="${currentMood}"]`);
-        if (currentBtn) currentBtn.classList.add('active');
     }
 
     _initPresets() {
@@ -192,39 +330,60 @@ class UIManager {
                 btn.classList.add('active');
             });
         });
-        const firstPreset = document.querySelector('.preset-btn');
-        if (firstPreset) firstPreset.classList.add('active');
     }
 
-    async _handleFileUpload(file) {
-        if (!file.type.startsWith('image/')) { alert('Please upload an image file'); return; }
+    async _handleFileUpload(fileOrFiles) {
+        const files = Array.isArray(fileOrFiles) ? fileOrFiles : [fileOrFiles];
+        if (!files.length) return;
+        if (!files[0].type.startsWith('image/')) { alert('Please upload image files'); return; }
+        
         appState.set('ai.processing', true);
-        appState.set('ai.progress', 0);
+        const options = {
+            backgroundRemoval: this.elements.aiBgRemove?.checked ?? true,
+            perspectiveCorrection: this.elements.aiPerspective?.checked ?? true,
+            colorEnhancement: document.getElementById('ai-color-enhance')?.checked ?? false
+        };
+
         try {
-            const result = await aiProcessor.analyzeArtwork(file);
-            const img = await this._fileToImage(file);
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            canvas.getContext('2d').drawImage(img, 0, 0);
-            appState.set('artwork.processedImage', canvas);
-            appState.set('project.id', crypto.randomUUID());
-            this.elements.uploadPrompt.classList.add('hidden');
-            if (result.suggestions?.length > 0) this._showAISuggestions(result.suggestions);
+            const results = await batchProcessor.uploadBatch(files, options);
+            if (results.length > 0) {
+                this.elements.uploadPrompt.classList.add('hidden');
+                this._updateBatchGallery();
+                if (results[0].suggestions?.length > 0) this._showAISuggestions(results[0].suggestions);
+                this._showNotification(`📚 Processed ${results.length} artworks`);
+            }
         } catch (err) {
             console.error('Upload failed:', err);
+            if (files.length === 1) await this._handleSingleFileUpload(files[0], options);
         } finally {
             appState.set('ai.processing', false);
         }
     }
 
-    _fileToImage(file) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => resolve(img);
-            img.onerror = reject;
-            img.src = URL.createObjectURL(file);
+    async _handleSingleFileUpload(file, options) {
+        const result = await aiProcessor.analyzeArtwork(file, options);
+        const processedCanvas = result.processedCanvas || await this._imageToCanvas(result);
+        batchProcessor.artworks.push({
+            id: crypto.randomUUID(),
+            name: file.name.replace(/\.[^/.]+$/, ''),
+            canvas: processedCanvas,
+            scale: 100,
+            rotation: 0,
+            position: { x: 0, y: 0 },
+            addedAt: new Date().toISOString()
         });
+        batchProcessor.setActive(batchProcessor.artworks.length - 1);
+        this.elements.uploadPrompt.classList.add('hidden');
+        this._updateBatchGallery();
+        if (result.suggestions?.length > 0) this._showAISuggestions(result.suggestions);
+    }
+
+    async _imageToCanvas(img) {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        return canvas;
     }
 
     _showAISuggestions(suggestions) {
@@ -232,22 +391,16 @@ class UIManager {
         if (!card) return;
         card.innerHTML = `
             <div class="ai-icon">✨</div>
-            <p style="margin-bottom:8px;">AI suggests these scenes:</p>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+            <p>AI suggests:</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 ${suggestions.slice(0, 3).map(s => `
-                    <button class="suggest-btn" data-id="${s.id}" style="padding:6px 12px;background:rgba(108,92,231,0.3);border:1px solid #6c5ce7;border-radius:4px;color:white;cursor:pointer;font-size:12px;">${s.name}</button>
+                    <button data-id="${s.id}">${s.name}</button>
                 `).join('')}
             </div>
         `;
-        card.querySelectorAll('.suggest-btn').forEach(btn => {
+        card.querySelectorAll('button').forEach(btn => {
             btn.addEventListener('click', () => {
-                const id = btn.dataset.id;
-                const template = TemplateLibrary.getById(id);
-                if (template) {
-                    appState.set('template.id', id);
-                    const catBtn = document.querySelector(`.category-btn[data-category="${template.category}"]`);
-                    if (catBtn) catBtn.click();
-                }
+                appState.set('template.id', btn.dataset.id);
             });
         });
     }
@@ -257,29 +410,23 @@ class UIManager {
         const template = TemplateLibrary.getById(appState.get('template.id'));
         if (!artwork || !template) { alert('Please upload artwork and select a template first'); return; }
 
-        const presetBtn = document.querySelector('.preset-btn.active');
-        const presetId = presetBtn?.dataset.preset || 'marketplace';
+        const presetId = document.querySelector('.preset-btn.active')?.dataset.preset || 'marketplace';
         appState.set('ai.processing', true);
-
+        
         try {
-            const targetWidth = presetId === 'social' ? 1080 : presetId === 'print' ? 4800 : 3000;
-            const exportCanvas = await templateRenderer.renderForExport(template, artwork, {
-                scale: appState.get('artwork.scale') / 100,
-                rotation: appState.get('artwork.rotation'),
+            const config = {
+                preset: presetId,
                 frame: appState.get('frame'),
-                lighting: appState.get('lighting')
-            }, targetWidth);
-
-            const blob = await new Promise(r => exportCanvas.toBlob(r, 'image/png'));
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `galleria-${presetId}-${Date.now()}.png`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+                lighting: appState.get('lighting'),
+                scale: appState.get('artwork.scale') / 100,
+                rotation: appState.get('artwork.rotation')
+            };
+            const pack = await this._generateExportPack(template, artwork, config);
+            for (const file of pack.files) {
+                await exportEngine.downloadFile(file.blob, file.name);
+            }
             this.elements.exportModal.close();
+            this._showNotification(`Exported ${pack.files.length} images!`);
         } catch (err) {
             console.error('Export failed:', err);
             alert('Export failed: ' + err.message);
@@ -288,12 +435,64 @@ class UIManager {
         }
     }
 
+    async _generateExportPack(template, artwork, config) {
+        const preset = exportEngine.getPreset(config.preset) || exportEngine.getPreset('marketplace');
+        const format = exportEngine.formatSettings[config.preset === 'social' ? 'jpg-med' : 'jpg-high'];
+        const pack = { name: preset.name, files: [] };
+        for (const size of preset.sizes) {
+            const canvas = await templateRenderer.renderForExport(template, artwork, config, size.width);
+            const blob = await exportEngine.canvasToBlob(canvas, format.mimeType, format.quality);
+            pack.files.push({ name: `artwork-${size.name}.${format.ext}`, blob, type: format.mimeType });
+        }
+        return pack;
+    }
+
+    _updateBatchGallery() {
+        const container = document.getElementById('batch-gallery-list');
+        const artworks = batchProcessor.getArtworks();
+        document.getElementById('artwork-count').textContent = artworks.length;
+        if (artworks.length === 0) { container.innerHTML = ''; return; }
+        container.innerHTML = artworks.map((artwork, i) => `
+            <div class="batch-thumb ${i === batchProcessor.getActiveIndex() ? 'active' : ''}" data-index="${i}">
+                <img src="${artwork.canvas.toDataURL('image/jpeg', 0.5)}">
+                <button class="batch-remove" data-index="${i}">×</button>
+            </div>
+        `).join('');
+        container.querySelectorAll('.batch-thumb').forEach(thumb => {
+            thumb.addEventListener('click', (e) => {
+                const index = parseInt(thumb.dataset.index);
+                if (e.target.classList.contains('batch-remove')) {
+                    e.stopPropagation();
+                    batchProcessor.remove(index);
+                    this._updateBatchGallery();
+                } else {
+                    batchProcessor.setActive(index);
+                    this._updateUIFromState();
+                    this._updateBatchGallery();
+                }
+            });
+        });
+    }
+
     _resetProject() {
         appState.reset();
+        batchProcessor.clear();
+        this._updateBatchGallery();
         this.elements.uploadPrompt.classList.remove('hidden');
         this.elements.artworkInput.value = '';
-        this._initTemplateGrid();
-        this._initMoodPresets();
+    }
+
+    _showNotification(message, duration = 3000) {
+        const notification = document.createElement('div');
+        notification.textContent = message;
+        notification.style.cssText = `
+            position: fixed; bottom: 20px; right: 20px;
+            background: #6c5ce7; color: white;
+            padding: 12px 24px; border-radius: 8px;
+            z-index: 10000; animation: fadeInUp 0.3s ease;
+        `;
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), duration);
     }
 }
 
